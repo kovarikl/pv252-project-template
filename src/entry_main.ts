@@ -17,7 +17,7 @@ site_a.onclick = () => {
       UIkit.notification("Going to factorials in 1s...", {
         pos: "bottom-right",
       });
-      setTimeout(() => {
+      setTimeout(() => { 
         location.href = "/site_a.html";
       }, 1000);
     }, 1000);
