@@ -19,7 +19,7 @@ site_a.onclick = () => {
       });
       setTimeout(() => {
         location.href = "/site_a.html";
-      }, 1000);
+      }, '');
     }, 1000);
   }, 1000);
 };
