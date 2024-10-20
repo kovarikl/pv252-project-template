@@ -1,7 +1,7 @@
 const template = document.createElement("template");
 template.innerHTML = `
 <style>
-div.list {
+div#list {
   height: var(--height);
   width: var(--width);  
   border: var(--border);
@@ -9,19 +9,9 @@ div.list {
   overflow: scroll;
   scrollbar-width: none;
 }
-#spacer-top {
-  width: 100%;
-  height: 0px;
-}
-#spacer-bottom {
-  width: 100%;
-  height: 1000px;
-}
 </style>
 <div id="list">
-  <div id="spacer-top"></div>
   <slot></slot>
-  <div id="spacer-bottom"></div>
 </div>
 `;
 
@@ -41,18 +31,11 @@ export class LazyList<T> extends HTMLElement {
   // By default, the list is empty.
   #data: T[] = [];
 
-  // The index of the first visible data item.
-  #visiblePosition: number = 0;
-
-  // The amount of space that needs to be shown before the first visible item.
-  #topOffset: number = 0;
-  #topOffsetElement: HTMLElement;
-  // The amount of space that needs to be shown after the last visible item.
-  #bottomOffset: number = 0;
-  #bottomOffsetElement: HTMLElement;
-
   // The container that stores the spacer elements and the slot where items are inserted.
   #listElement: HTMLElement;
+
+  // The index of the first item in the view.
+  #view = 1;
 
   static register() {
     customElements.define("lazy-list", LazyList);
@@ -66,24 +49,67 @@ export class LazyList<T> extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this.shadowRoot.appendChild(template.content.cloneNode(true));
 
-    this.#topOffsetElement =
-      this.shadowRoot.querySelector<HTMLElement>("#spacer-top")!;
-    this.#bottomOffsetElement =
-      this.shadowRoot.querySelector<HTMLElement>("#spacer-bottom")!;
     this.#listElement = this.shadowRoot.querySelector<HTMLElement>("#list")!;
 
     this.#listElement.onscroll = () => {
-      console.log(this.#listElement.scrollTop);
+      this.#handleScroll(this.#listElement.scrollTop);
     };
+  }
+
+  #handleScroll(scrollTop: number) {
+    if (this.#data.length < 4) {
+      return;
+    }
+
+    if (scrollTop >= 410 + 410) {
+      if (this.#view + 3 > this.#data.length - 1) {
+        return;
+      }
+
+      this.#view = this.#view + 1;
+      this.#reconnnedChildren(this.#view - 1);
+      this.#listElement.scrollTop = 410;
+    } else if (scrollTop <= 0) {
+      if (this.#view - 2 < 0) {
+        return;
+      }
+
+      this.#view = this.#view - 1;
+      this.#reconnnedChildren(this.#view - 1);
+      this.#listElement.scrollTop = 410;
+    }
+  }
+
+  #reconnnedChildren(from: number) {
+    this.removeChild(this.querySelector("div"));
+    this.removeChild(this.querySelector("div"));
+    this.removeChild(this.querySelector("div"));
+    this.removeChild(this.querySelector("div"));
+
+    this.appendChild(this.#renderFunction(this.#data[from]));
+    this.appendChild(this.#renderFunction(this.#data[from + 1]));
+    this.appendChild(this.#renderFunction(this.#data[from + 2]));
+    this.appendChild(this.#renderFunction(this.#data[from + 3]));
   }
 
   setData(data: T[]) {
     this.#data = data;
-    // TODO: Data changed, re-draw content.
+
+    if (this.#data.length < 4) {
+      for (let i = 0; i < this.#data.length; i++) {
+        this.appendChild(this.#renderFunction(this.#data[i]));
+      }
+    } else {
+      for (let i = 0; i < 4; i++) {
+        this.appendChild(this.#renderFunction(this.#data[i]));
+      }
+
+      this.#view = 1;
+    }
   }
 
   setRenderer(renderer: Renderer<T>) {
     this.#renderFunction = renderer;
-    // TODO: Renderer changed, re-draw content.
+    this.setData(this.#data);
   }
 }
