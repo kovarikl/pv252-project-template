@@ -1,12 +1,29 @@
+import { MessageType } from "./hash_worker_messages.js";
 import { AsyncSha256 } from "./sha-256.js";
 
-// In this file, you can define the worker script that will compute the
-// hash digest for a given file. Of course, it is up to you what kind
-// of messages should the worker receive/send.
-
 const hasher = new AsyncSha256();
-hasher.async_digest(
-  "Some data (represented as string)",
-  (hash) => console.log(hash),
-  (remaining) => console.log(remaining),
-);
+const reader = new FileReader();
+
+reader.onload = () => {
+  const fileData = reader.result as string;
+
+  postMessage({ type: MessageType.Total, data: fileData.length });
+
+  hasher.async_digest(
+    fileData,
+    (hash) => {
+      postMessage({ type: MessageType.Hash, data: hash });
+    },
+    (remaining) => {
+      postMessage({ type: MessageType.Progress, data: remaining });
+    },
+  );
+};
+
+self.onmessage = (event) => {
+  const { type, data } = event.data;
+
+  if (type === MessageType.File) {
+    reader.readAsText(data);
+  }
+};

@@ -2,3 +2,10 @@
 // the main website and the web worker, it might be good to have those
 // declared in a separate file, so that they can be imported
 // from both contexts.
+
+export enum MessageType {
+  Total = "total",
+  Hash = "hash",
+  Progress = "progress",
+  File = "file",
+}

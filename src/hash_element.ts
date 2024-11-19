@@ -1,5 +1,5 @@
 import { FASTElement, html, observable, when } from "@microsoft/fast-element";
-import { AsyncSha256 } from "./sha-256.js";
+import { MessageType } from "./hash_worker_messages.js";
 
 /**
  * The purpose of `HashElement` is to compute the SHA256 checksum of the given file, using the
@@ -41,34 +41,28 @@ export class HashElement extends FASTElement {
     this.#started = new Date();
     this.fileName = file.name;
 
-    // Read the file and then start computing the hash.
-    // TODO: We want to "move" this computation into a WebWorker so that it
-    // does not interfere with the rest of the UI.
-    const reader = new FileReader();
-    reader.onload = () => {
-      // The result should always be a string in this case.
-      const fileData = reader.result as string;
+    const worker = new Worker(new URL("./hash_worker.ts", import.meta.url));
 
-      // At this point, we know how much data we have.
-      this.total = fileData.length;
+    worker.onmessage = (event) => {
+      const { type, data } = event.data;
 
-      const hasher = new AsyncSha256();
-      hasher.async_digest(
-        fileData,
-        (hash) => {
-          // We are done.
-          this.hash = hash;
+      switch (type) {
+        case MessageType.Progress:
+          this.remaining = data;
+          this.elapsed = new Date().getTime() - this.#started.getTime();
+          break;
+        case MessageType.Hash:
+          this.hash = data;
           this.remaining = 0;
           this.elapsed = new Date().getTime() - this.#started.getTime();
-        },
-        (remaining) => {
-          // Update progress.
-          this.remaining = remaining;
-          this.elapsed = new Date().getTime() - this.#started.getTime();
-        },
-      );
+          break;
+        case MessageType.Total:
+          this.total = data;
+          break;
+      }
     };
-    reader.readAsText(file);
+
+    worker.postMessage({ type: MessageType.File, data: file });
   }
 }
 
